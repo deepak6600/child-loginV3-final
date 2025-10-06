@@ -14,8 +14,8 @@ android {
         applicationId = "com.safe.setting.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 4
-        versionName = "4.40004"
+        versionCode = 6
+        versionName = "6.60006"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -71,15 +71,15 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
-    implementation("androidx.work:work-runtime-ktx:2.10.4")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
 
     // Android Lifecycle
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.3")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:34.2.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.android.gms:play-services-location:21.3.0")
@@ -88,7 +88,7 @@ dependencies {
 
 
 //    val supabaseVersion = "3.0.0" // माइग्रेशन गाइड के अनुसार संस्करण 3.0.0
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.2"))
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.4"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt") // got rue-kt की जगह auth-kt
@@ -103,13 +103,13 @@ dependencies {
 
 
     // Glide Image Loading
-    implementation("com.github.bumptech.glide:glide:5.0.4")
-    ksp("com.github.bumptech.glide:compiler:5.0.4")
+    implementation("com.github.bumptech.glide:glide:5.0.5")
+    ksp("com.github.bumptech.glide:compiler:5.0.5")
 
 
     // Dagger 2
-    implementation("com.google.dagger:dagger:2.57.1")
-    ksp("com.google.dagger:dagger-compiler:2.57.1")
+    implementation("com.google.dagger:dagger:2.57.2")
+    ksp("com.google.dagger:dagger-compiler:2.57.2")
 
     // RxJava3 & RxBinding
     implementation("com.jakewharton.rxbinding4:rxbinding:4.0.0")
@@ -122,3 +122,4 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }
 
+//Universal Developers Private Limited
