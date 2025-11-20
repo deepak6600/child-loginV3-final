@@ -14,8 +14,8 @@ android {
         applicationId = "com.safe.setting.app"
         minSdk = 23
         targetSdk = 36
-        versionCode = 6
-        versionName = "6.60006"
+        versionCode = 8
+        versionName = "8.80008"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -71,7 +71,7 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
     implementation("androidx.cardview:cardview:1.0.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
-    implementation("androidx.work:work-runtime-ktx:2.10.5")
+    implementation("androidx.work:work-runtime-ktx:2.11.0")
 
     // Android Lifecycle
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.4")
@@ -79,25 +79,25 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-database")
+    implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
+    implementation("com.google.firebase:firebase-auth:24.0.1")
+    implementation("com.google.firebase:firebase-database:22.0.1")
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-analytics:23.0.0")
 
 
 
-//    val supabaseVersion = "3.0.0" // माइग्रेशन गाइड के अनुसार संस्करण 3.0.0
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.4"))
+//    val supabaseVersion = "3.0.0" // गाइड के  संस्करण 3.0.0
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.2.6"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt") // got rue-kt की जगह auth-kt
     implementation("io.github.jan-tennert.supabase:realtime-kt") // Realtime के लिए जोड़ा गया
 
-    implementation("io.ktor:ktor-client-okhttp:3.3.0")
+    implementation("io.ktor:ktor-client-okhttp:3.3.2")
 
 
-    // लॉजिक: minSdk 26 से कम होने पर Java 8+ APIs को सपोर्ट करने के लिए desugaring आवश्यक है।
+    // लॉजिक: minSdk 26 से कम होने पर Java 8+ APIs को सपोर्ट
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 
 

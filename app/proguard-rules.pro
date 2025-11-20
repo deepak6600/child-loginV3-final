@@ -89,6 +89,7 @@
 }
 -keepnames class com.google.android.gms.measurement.AppMeasurement
 
+
 # OkHttp and Okio
 -dontwarn okhttp3.**
 -dontwarn okio.**
